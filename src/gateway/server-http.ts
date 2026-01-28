@@ -30,6 +30,7 @@ import { applyHookMappings } from "./hooks-mapping.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
+import { handleHealthHttpRequest } from "./server-health-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
@@ -210,6 +211,11 @@ export function createGatewayHttpServer(opts: {
   handleHooksRequest: HooksRequestHandler;
   handlePluginRequest?: HooksRequestHandler;
   resolvedAuth: import("./auth.js").ResolvedGatewayAuth;
+  getHealthCache: () => import("../commands/health.js").HealthSummary | null;
+  refreshHealthSnapshot: (opts: {
+    probe: boolean;
+  }) => Promise<import("../commands/health.js").HealthSummary>;
+  logHealth: import("../logging/subsystem.js").SubsystemLogger;
   tlsOptions?: TlsOptions;
 }): HttpServer {
   const {
@@ -222,6 +228,9 @@ export function createGatewayHttpServer(opts: {
     handleHooksRequest,
     handlePluginRequest,
     resolvedAuth,
+    getHealthCache,
+    refreshHealthSnapshot,
+    logHealth,
   } = opts;
   const httpServer: HttpServer = opts.tlsOptions
     ? createHttpsServer(opts.tlsOptions, (req, res) => {
@@ -238,6 +247,14 @@ export function createGatewayHttpServer(opts: {
     try {
       const configSnapshot = loadConfig();
       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
+      if (
+        await handleHealthHttpRequest(req, res, {
+          getHealthCache,
+          refreshHealthSnapshot,
+          logHealth,
+        })
+      )
+        return;
       if (await handleHooksRequest(req, res)) return;
       if (
         await handleToolsInvokeHttpRequest(req, res, {

@@ -306,6 +306,9 @@ export async function startGatewayServer(
     log,
     logHooks,
     logPlugins,
+    getHealthCache,
+    refreshHealthSnapshot: refreshGatewayHealthSnapshot,
+    logHealth,
   });
   let bonjourStop: (() => Promise<void>) | null = null;
   const nodeRegistry = new NodeRegistry();

@@ -42,6 +42,11 @@ export async function createGatewayRuntimeState(params: {
   log: { info: (msg: string) => void; warn: (msg: string) => void };
   logHooks: ReturnType<typeof createSubsystemLogger>;
   logPlugins: ReturnType<typeof createSubsystemLogger>;
+  getHealthCache: () => import("../commands/health.js").HealthSummary | null;
+  refreshHealthSnapshot: (opts: {
+    probe: boolean;
+  }) => Promise<import("../commands/health.js").HealthSummary>;
+  logHealth: ReturnType<typeof createSubsystemLogger>;
 }): Promise<{
   canvasHost: CanvasHostHandler | null;
   httpServer: HttpServer;
@@ -119,6 +124,9 @@ export async function createGatewayRuntimeState(params: {
       handlePluginRequest,
       resolvedAuth: params.resolvedAuth,
       tlsOptions: params.gatewayTls?.enabled ? params.gatewayTls.tlsOptions : undefined,
+      getHealthCache: params.getHealthCache,
+      refreshHealthSnapshot: params.refreshHealthSnapshot,
+      logHealth: params.logHealth,
     });
     try {
       await listenGatewayHttpServer({
